@@ -1,0 +1,24 @@
+{
+  "name": "faster.db",
+  "version": "1.0.1",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Database",
+    "Fast",
+    "In-Memory",
+    "JSON"
+  ],
+  "author": "verleihernix",
+  "license": "Apache-2.0",
+  "description": "Easy to use, fast, async-ready JSON database",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  },
+  "files": [
+    "lib"
+  ]
+}
