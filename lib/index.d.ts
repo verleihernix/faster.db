@@ -242,7 +242,7 @@ declare class Database<T extends object> extends EventEmitter {
  * await db.insert({ Name: 'John', ID: 1 });
  * })();
  */
-export default function createDatabase<T extends object>(path: string, defaultData: T): Database<T>;
+export declare function createDatabase<T extends object>(path: string, defaultData: T): Database<T>;
 /**
  * Creates a backup of the database data.
  * @param {Database<T>} db - The database to create a backup of

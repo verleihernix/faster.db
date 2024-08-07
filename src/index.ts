@@ -480,7 +480,7 @@ class Database<T extends object> extends EventEmitter {
  * await db.insert({ Name: 'John', ID: 1 });
  * })();
  */
-export default function createDatabase<T extends object>(path: string, defaultData: T): Database<T> {
+export function createDatabase<T extends object>(path: string, defaultData: T): Database<T> {
     return new Database(path, defaultData);
 }
 
