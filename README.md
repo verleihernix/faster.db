@@ -21,14 +21,14 @@ npm install faster.db
 
 ### Usage (Typescript)
 ```ts
-import { Database } from 'faster.db';
+import { createDatabase } from 'faster.db';
 
 type User = {
   Name: string;
   ID: number;
 };
 
-const db = new Database<User>('user-database', { Name: '', ID: 0 });
+const db = createDatabase<User>('user-database', { Name: '', ID: 0 });
 
 db.on('error', (err) => {
   console.error('Database error:', err);
@@ -51,9 +51,9 @@ db.on('error', (err) => {
 
 ### Usage (JavaScript)
 ```js
-const { Database } = require('faster.db');
+const { createDatabase } = require('faster.db');
 
-const db = new Database('user-database', { Name: String, ID: Number });
+const db = createDatabase('user-database', { Name: String, ID: Number });
 
 db.on('error', (err) => {
   console.error('Database error:', err);
