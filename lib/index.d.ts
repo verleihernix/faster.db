@@ -32,9 +32,9 @@ export type DBEvents<T extends object> = {
  *     await db.insert({ Name: 'John', ID: 1 });
  * })();
  */
-export declare class Database<T extends object> extends EventEmitter {
-    private path;
-    private defaultData;
+declare class Database<T extends object> extends EventEmitter {
+    private _path;
+    private _defaultData;
     private data;
     /**
      * Whether an error occurred during the last operation
@@ -45,9 +45,17 @@ export declare class Database<T extends object> extends EventEmitter {
      */
     dataLoaded: boolean;
     /**
+     * Returns the path to the file where the data is stored
+     */
+    get path(): string;
+    /**
+     * Returns the default data that will be used when inserting new data
+     */
+    get defaultData(): T;
+    /**
      * Creates a new instance of the Database class.
-     * @param {string} path - The path to the file where the data will be stored
-     * @param {T} defaultData - The default data that will be used when inserting new data
+     * @param {string} _path - The path to the file where the data will be stored
+     * @param {T} _defaultData - The default data that will be used when inserting new data
      * @constructor
      * @example
      * const db = new Database('user-database', { Name: String, ID: Number });
@@ -56,12 +64,12 @@ export declare class Database<T extends object> extends EventEmitter {
      * });
      * (async () => {
      *  if (await db.dataExists({ Name: 'John' })) {
-     *   await db.delete({ Name: 'John' });
+     *   await db.delete({ Name: 'John' })
      * } else {
      *  await db.insert({ Name: 'John', ID: 1 });
      * })();
      */
-    constructor(path: string, defaultData: T);
+    constructor(_path: string, _defaultData: T);
     /**
      * @param {E} event - The name of the event to listen for
      * @param {DBEvents<T>[E]} listener - The listener function that will be called when the event is emitted
@@ -87,7 +95,7 @@ export declare class Database<T extends object> extends EventEmitter {
      */
     emit<E extends keyof DBEvents<T>>(event: E, ...args: Parameters<DBEvents<T>[E]>): boolean;
     private loadData;
-    private saveData;
+    save(): Promise<void>;
     /**
      * Inserts a new data entry into the database.
      * @async
@@ -152,3 +160,34 @@ export declare class Database<T extends object> extends EventEmitter {
      */
     dataExists(query: Partial<T>): Promise<boolean>;
 }
+/**
+ * Creates a new instance of the Database class.
+ * @param {string} path - The path to the file where the data will be stored
+ * @param {T} defaultData - The default data that will be used when inserting new data
+ * @returns {Database<T>} - The instance of the Database class
+ * @template T - The type of data that the database will store
+ * @example
+ * const db = createDatabase('user-database', { Name: String, ID: Number });
+ * db.on('error', (err) => {
+ *  console.log(err);
+ * });
+ * (async () => {
+ * if (await db.dataExists({ Name: 'John' })) {
+ * await db.delete({ Name: 'John' });
+ * } else {
+ * await db.insert({ Name: 'John', ID: 1 });
+ * })();
+ */
+export default function createDatabase<T extends object>(path: string, defaultData: T): Database<T>;
+/**
+ * Creates a backup of the database data.
+ * @param {Database<T>} db - The database to create a backup of
+ * @param {string} backupPath - The path to save the backup file
+ * @template T - The type of data that the database stores
+ * @returns {Promise<boolean>} - Whether the backup was created successfully
+ * @example
+ * const success = await createBackup(db, 'backup.json');
+ * console.log(success); // true
+ */
+export declare function createBackup<T extends object>(db: Database<T>, backupPath: string): Promise<boolean>;
+export {};
