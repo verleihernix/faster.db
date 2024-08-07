@@ -28,7 +28,7 @@ export type DBEvents<T extends object> = {
  *     await db.insert({ Name: 'John', ID: 1 });
  * })();
  */
-export class Database<T extends object> extends EventEmitter {
+class Database<T extends object> extends EventEmitter {
     private data: T[] = [];
     /**
      * Whether an error occurred during the last operation
@@ -40,9 +40,23 @@ export class Database<T extends object> extends EventEmitter {
     public dataLoaded: boolean = false;
 
     /**
+     * Returns the path to the file where the data is stored
+     */
+    public get path (): string {
+        return this.path;
+    }
+
+    /**
+     * Returns the default data that will be used when inserting new data
+     */
+    public get defaultData (): T {
+        return this.defaultData;
+    }
+
+    /**
      * Creates a new instance of the Database class.
-     * @param {string} path - The path to the file where the data will be stored 
-     * @param {T} defaultData - The default data that will be used when inserting new data
+     * @param {string} _path - The path to the file where the data will be stored 
+     * @param {T} _defaultData - The default data that will be used when inserting new data
      * @constructor
      * @example
      * const db = new Database('user-database', { Name: String, ID: Number });
@@ -51,15 +65,15 @@ export class Database<T extends object> extends EventEmitter {
      * });
      * (async () => {
      *  if (await db.dataExists({ Name: 'John' })) {
-     *   await db.delete({ Name: 'John' });
+     *   await db.delete({ Name: 'John' })
      * } else {
      *  await db.insert({ Name: 'John', ID: 1 });
      * })(); 
      */
-    constructor(private path: string, private defaultData: T) {
+    constructor(private _path: string, private _defaultData: T) {
         super();
-        if (!path.endsWith('.fastdb')) {
-            this.path = `${path}.fastdb`;
+        if (!_path.endsWith('.fastdb')) {
+            this._path = `${_path}.fastdb`;
         }
     }
 
@@ -99,14 +113,14 @@ export class Database<T extends object> extends EventEmitter {
     private async loadData(): Promise<void> {
         if (!this.dataLoaded) {
             try {
-                const fileContent = await readFile(this.path, 'utf-8');
+                const fileContent = await readFile(this._path, 'utf-8');
                 this.data = JSON.parse(fileContent);
                 this.dataLoaded = true;
-                this.emit('connected', { Path: this.path });
+                this.emit('connected', { Path: this._path });
             } catch (error) {
                 if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
                     this.data = [];
-                    await this.saveData();
+                    await this.save();
                 } else {
                     throw error;
                 }
@@ -114,8 +128,8 @@ export class Database<T extends object> extends EventEmitter {
         }
     }
 
-    private async saveData(): Promise<void> {
-        await writeFile(this.path, JSON.stringify(this.data, null, 2));
+    public async save(): Promise<void> {
+        await writeFile(this._path, JSON.stringify(this.data, null, 2));
     }
 
     /**
@@ -135,9 +149,9 @@ export class Database<T extends object> extends EventEmitter {
                 this.emit('error', new Error('Data to insert cannot be empty'));
                 return undefined;
             }
-            const newEntry = {...this.defaultData, ...data};
+            const newEntry = {...this._defaultData, ...data};
             this.data.push(newEntry);
-            await this.saveData();
+            await this.save();
             this.emit('newData', newEntry);
             return newEntry;
         } catch (error) {
@@ -181,7 +195,7 @@ export class Database<T extends object> extends EventEmitter {
             await this.loadData();
             const originalLength = this.data.length;
             this.data = [];
-            await this.saveData();
+            await this.save();
             this.emit('dataDeleted', { OriginalLength: originalLength, ActualLength: 0, Completed: true });
             return true;
         } catch (error) {
@@ -252,7 +266,7 @@ export class Database<T extends object> extends EventEmitter {
 
             const deletedCount = originalLength - this.data.length;
 
-            await this.saveData();
+            await this.save();
         
             this.emit('dataDeleted', { 
                 OriginalLength: originalLength, 
@@ -300,3 +314,57 @@ export class Database<T extends object> extends EventEmitter {
         }
     }
 }
+
+/**
+ * Creates a new instance of the Database class.
+ * @param {string} path - The path to the file where the data will be stored 
+ * @param {T} defaultData - The default data that will be used when inserting new data
+ * @returns {Database<T>} - The instance of the Database class
+ * @template T - The type of data that the database will store
+ * @example
+ * const db = createDatabase('user-database', { Name: String, ID: Number });
+ * db.on('error', (err) => {
+ *  console.log(err);
+ * });
+ * (async () => {
+ * if (await db.dataExists({ Name: 'John' })) {
+ * await db.delete({ Name: 'John' });
+ * } else {
+ * await db.insert({ Name: 'John', ID: 1 });
+ * })();
+ */
+export default function createDatabase<T extends object>(path: string, defaultData: T): Database<T> {
+    return new Database(path, defaultData);
+}
+
+
+/**
+ * Creates a backup of the database data. 
+ * @param {Database<T>} db - The database to create a backup of 
+ * @param {string} backupPath - The path to save the backup file 
+ * @template T - The type of data that the database stores
+ * @returns {Promise<boolean>} - Whether the backup was created successfully
+ * @example
+ * const success = await createBackup(db, 'backup.json');
+ * console.log(success); // true
+ */
+export async function createBackup<T extends object>(db: Database<T>, backupPath: string): Promise<boolean> {
+    if (!db || !backupPath) {
+        throw new Error('Missing one or more required arguments');
+    }
+    try {
+        if (!backupPath.endsWith('.fastdb-backup')) {
+            backupPath = `${backupPath}.fastdb-backup`;
+        }
+        if (db.dataLoaded) {
+            const data = await db.getAll();
+            await writeFile(backupPath, JSON.stringify(data, null, 2));
+            return true;
+        } else {
+            throw new Error('Database data not loaded');
+        }
+    } catch (error) {
+        throw error;
+    }
+}
+
