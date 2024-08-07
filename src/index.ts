@@ -31,6 +31,12 @@ export type DBEvents<T extends object> = {
 class Database<T extends object> extends EventEmitter {
     private data: T[] = [];
     /**
+     * Returns the data stored in the database
+     */
+    public get _data (): T[] {
+        return this.data;
+    }
+    /**
      * Whether an error occurred during the last operation
      */
     public errorOccurred: boolean = false;
@@ -110,6 +116,11 @@ class Database<T extends object> extends EventEmitter {
         return super.emit(event, ...args);
     }
 
+    /**
+     * Loads the data from the file into the database.
+     * @async
+     * @returns {Promise<void>} - A promise that resolves when the data has been loaded
+     */
     private async loadData(): Promise<void> {
         if (!this.dataLoaded) {
             try {
@@ -131,6 +142,7 @@ class Database<T extends object> extends EventEmitter {
     public async save(): Promise<void> {
         await writeFile(this._path, JSON.stringify(this.data, null, 2));
     }
+
 
     /**
      * Inserts a new data entry into the database. 
@@ -313,6 +325,141 @@ class Database<T extends object> extends EventEmitter {
             return false;
         }
     }
+
+    /**
+     * Counts the number of data entries in the database that match the query.
+     * @async
+     * @param {Partial<T>} query - The query to search for in the database 
+     * @returns {Promise<number | undefined>} - The number of data entries that were found. Undefined if an error occurred
+     * @example
+     * const count = await db.countEntries({ Name: 'John' });
+     * console.log(count); // 1
+     */
+    public async countEntries(query: Partial<T>): Promise<number | undefined> {
+        if (!query || Object.keys(query).length === 0) {
+            throw new Error('Cannot count entries with an empty query');
+        }
+        try {
+            await this.loadData();
+            return this.data.filter(entry => {
+                for (const key in query) {
+                    if (query[key] !== entry[key]) {
+                        return false;
+                    }
+                }
+                return true;
+            }).length;
+        } catch (error) {
+            this.emit('error', error as Error);
+            this.errorOccurred = true;
+            return undefined;
+        }
+    }
+
+    /**
+     * Schedules a specified task to run at a specified time and execute a database operation.
+     * @param {() => Promise<void>} task - The task to perform on the database
+     * @param {Date} date - When the task should be executed
+     * @returns {NodeJS.Timeout} - The timeout object that can be used to cancel the task
+     * @example
+     * db.scheduleTask(async () => {
+     * await db.insert({ Name: 'John', ID: 1 });
+     * }, new Date('2025-12-17T03:24:00'));
+     * console.log(await db.getAll()); // []
+     */
+    public scheduleTask(task: () => Promise<void>, date: Date): NodeJS.Timeout {
+        const now = new Date(); 
+        const delay = date.getTime() - now.getTime();
+        if (delay < 0) {
+            throw new Error('Scheduled time must be in the future.');
+        }
+        return setTimeout(async () => {
+            try {
+                await task();
+            } catch (error) {
+                this.emit('error', error as Error);
+            }
+        }, delay);
+    }
+
+    /**
+     * Finds distinct values for a specified field in the database.
+     * @async
+     * @param {K} field - The field to find distinct values for
+     * @template K - The type of field to find distinct values for
+     * @returns {Promise<Array<T[K]> | null>} - The distinct values that were found. Null if an error occurred  
+     * @example
+     * const values = await db.findDistinct('Name');
+     * console.log(values); // ['John', 'Jane'];
+     */
+    public async findDistinct<K extends keyof T>(field: K): Promise<Array<T[K]> | null> {
+        if (!field) {
+            throw new Error('Field to find distinct values for cannot be empty');
+        }
+        try {
+            await this.loadData();
+            const data = await this.getAll();
+            if (data) {
+                const values = data.map(entry => entry[field]);
+                return Array.from(new Set(values));
+            }
+            return null;
+        } catch (error) {
+            this.emit('error', error as Error);
+            this.errorOccurred = true;
+            return null;
+        }
+    }
+
+    /**
+     * Filters the data in the database using a specified filter function.
+     * @async
+     * @param {(entry: T) => boolean} filterFn - The filter function to use 
+     * @returns {Promise<T[] | undefined>} - The data entries that were found. Undefined if an error occurred
+     * @example
+     * const data = await db.filterData(entry => entry.Name === 'John');
+     * console.log(data[0].Name); // John
+     */
+    public async filterData(filterFn: (entry: T) => boolean): Promise<T[] | undefined> {
+        if (!filterFn) {
+            throw new Error('Filter function cannot be empty');
+        }
+        try {
+            await this.loadData();
+            return this.data.filter(filterFn);
+        } catch (error) {
+            this.emit('error', error as Error);
+            this.errorOccurred = true;
+            return undefined;
+        }
+    }
+
+    /**
+     * Paginates the data in the database and returns a specified number of data entries.
+     * @async
+     * @param {number} page - The page number to retrieve
+     * @param {number} pageSize - The number of data entries to retrieve per page
+     * @returns {Promise<T[] | undefined>} - The data entries that were found. Undefined if an error occurred
+     * @example
+     * const data = await db.paginateData(1, 1);
+     * console.log(data[0].Name); // John
+     */
+    public async paginateData(page: number, pageSize: number): Promise<T[] | undefined> {
+        if (!page || !pageSize || page < 1 || pageSize < 1) {
+            throw new Error('Invalid parameters for pagination');
+        }
+        try {
+            await this.loadData();
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            return this.data.slice(start, end);
+        } catch (error) {
+            this.emit('error', error as Error);
+            this.errorOccurred = true;
+            return undefined;
+        }
+    }
+
 }
 
 /**
@@ -367,4 +514,3 @@ export async function createBackup<T extends object>(db: Database<T>, backupPath
         throw error;
     }
 }
-

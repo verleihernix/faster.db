@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference types="node" />
 import { EventEmitter } from "events";
 /**
  * Represents the events that can be emitted by the Database class
@@ -36,6 +37,10 @@ declare class Database<T extends object> extends EventEmitter {
     private _path;
     private _defaultData;
     private data;
+    /**
+     * Returns the data stored in the database
+     */
+    get _data(): T[];
     /**
      * Whether an error occurred during the last operation
      */
@@ -94,6 +99,11 @@ declare class Database<T extends object> extends EventEmitter {
      * @override
      */
     emit<E extends keyof DBEvents<T>>(event: E, ...args: Parameters<DBEvents<T>[E]>): boolean;
+    /**
+     * Loads the data from the file into the database.
+     * @async
+     * @returns {Promise<void>} - A promise that resolves when the data has been loaded
+     */
     private loadData;
     save(): Promise<void>;
     /**
@@ -159,6 +169,60 @@ declare class Database<T extends object> extends EventEmitter {
      * console.log(exists); // true
      */
     dataExists(query: Partial<T>): Promise<boolean>;
+    /**
+     * Counts the number of data entries in the database that match the query.
+     * @async
+     * @param {Partial<T>} query - The query to search for in the database
+     * @returns {Promise<number | undefined>} - The number of data entries that were found. Undefined if an error occurred
+     * @example
+     * const count = await db.countEntries({ Name: 'John' });
+     * console.log(count); // 1
+     */
+    countEntries(query: Partial<T>): Promise<number | undefined>;
+    /**
+     * Schedules a specified task to run at a specified time and execute a database operation.
+     * @param {() => Promise<void>} task - The task to perform on the database
+     * @param {Date} date - When the task should be executed
+     * @returns {NodeJS.Timeout} - The timeout object that can be used to cancel the task
+     * @example
+     * db.scheduleTask(async () => {
+     * await db.insert({ Name: 'John', ID: 1 });
+     * }, new Date('2025-12-17T03:24:00'));
+     * console.log(await db.getAll()); // []
+     */
+    scheduleTask(task: () => Promise<void>, date: Date): NodeJS.Timeout;
+    /**
+     * Finds distinct values for a specified field in the database.
+     * @async
+     * @param {K} field - The field to find distinct values for
+     * @template K - The type of field to find distinct values for
+     * @returns {Promise<Array<T[K]> | null>} - The distinct values that were found. Null if an error occurred
+     * @example
+     * const values = await db.findDistinct('Name');
+     * console.log(values); // ['John', 'Jane'];
+     */
+    findDistinct<K extends keyof T>(field: K): Promise<Array<T[K]> | null>;
+    /**
+     * Filters the data in the database using a specified filter function.
+     * @async
+     * @param {(entry: T) => boolean} filterFn - The filter function to use
+     * @returns {Promise<T[] | undefined>} - The data entries that were found. Undefined if an error occurred
+     * @example
+     * const data = await db.filterData(entry => entry.Name === 'John');
+     * console.log(data[0].Name); // John
+     */
+    filterData(filterFn: (entry: T) => boolean): Promise<T[] | undefined>;
+    /**
+     * Paginates the data in the database and returns a specified number of data entries.
+     * @async
+     * @param {number} page - The page number to retrieve
+     * @param {number} pageSize - The number of data entries to retrieve per page
+     * @returns {Promise<T[] | undefined>} - The data entries that were found. Undefined if an error occurred
+     * @example
+     * const data = await db.paginateData(1, 1);
+     * console.log(data[0].Name); // John
+     */
+    paginateData(page: number, pageSize: number): Promise<T[] | undefined>;
 }
 /**
  * Creates a new instance of the Database class.
