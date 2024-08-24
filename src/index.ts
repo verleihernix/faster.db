@@ -29,12 +29,12 @@ export type DBEvents<T extends object> = {
  * })();
  */
 class Database<T extends object> extends EventEmitter {
-    private data: T[] = [];
+    #data: T[] = [];
     /**
      * Returns the data stored in the database
      */
-    public get _data (): T[] {
-        return this.data;
+    public get data (): T[] {
+        return this.#data;
     }
     /**
      * Whether an error occurred during the last operation
@@ -125,12 +125,12 @@ class Database<T extends object> extends EventEmitter {
         if (!this.dataLoaded) {
             try {
                 const fileContent = await readFile(this._path, 'utf-8');
-                this.data = JSON.parse(fileContent);
+                this.#data = JSON.parse(fileContent);
                 this.dataLoaded = true;
                 this.emit('connected', { Path: this._path });
             } catch (error) {
                 if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                    this.data = [];
+                    this.#data = [];
                     await this.save();
                 } else {
                     throw error;
@@ -206,7 +206,7 @@ class Database<T extends object> extends EventEmitter {
         try {
             await this.loadData();
             const originalLength = this.data.length;
-            this.data = [];
+            this.#data = [];
             await this.save();
             this.emit('dataDeleted', { OriginalLength: originalLength, ActualLength: 0, Completed: true });
             return true;
@@ -267,7 +267,7 @@ class Database<T extends object> extends EventEmitter {
             }
 
             const originalLength = this.data.length;
-            this.data = this.data.filter(entry => {
+            this.#data = this.data.filter(entry => {
                 for (const key in query) {
                     if (query[key] !== entry[key]) {
                         return true;
